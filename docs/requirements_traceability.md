@@ -1,0 +1,39 @@
+# Requirements Traceability Matrix
+## Voice-First Multilingual Agricultural Assistant (KrishiMitra — Sagveek Technologies Pvt. Ltd.)
+
+This traceability matrix maps every module and technical checklist area from the assignment specification to concrete source files, implementation status, automated tests, and verification evidence.
+
+---
+
+## 1. 14-Module Traceability Matrix
+
+| # | Assignment Module | Implementing Files | Status | Test Case(s) | Verification Evidence |
+|---|---|---|---|---|---|
+| **1** | **Channel & Audio Interface** | `backend/api/whatsapp.py`, `backend/api/routes.py`, `backend/database/db.py`, `frontend-web/src/components/ChatAssistant.tsx` | Implemented & Tested | `test_whatsapp_webhook_verification`, `test_whatsapp_test_mock_endpoint`, `test_whatsapp_duplicate_message_dedup`, `test_session_preferences_consent` | WhatsApp webhook verified via FastAPI `TestClient` mock payloads; browser `MediaRecorder` + audio upload tested in Web UI; live Meta Cloud API awaits `WHATSAPP_TOKEN` & `WHATSAPP_PHONE_ID`. |
+| **2** | **Speech-to-Text (STT)** | `backend/services/speech_to_text.py` | Implemented & Tested | `test_stt_initialization`, `test_stt_wav_normalization`, `test_voice_query_endpoint` | Whisper (`base`) transcription + `imageio-ffmpeg` / `wave` normalization for `.wav`, `.webm`, `.mp3`, `.ogg`, `.m4a`; real audio transcription verified with synthesized test speech. |
+| **3** | **Language ID, Intent & Query Understanding** | `backend/services/language_detection.py`, `backend/services/intent_classifier.py` | Implemented & Tested | `test_language_detection.py` (4 tests), `test_intent_classifier.py` (9 tests), `scripts/benchmark.py` | Supports Marathi, Hindi, English, and Hinglish/code-mixed queries across all 8 intents (`crop_advice`, `pest_info`, `disease_info`, `government_schemes`, `mandi_prices`, `weather`, `general_agriculture`, `out_of_scope`) & 7 entity types. |
+| **4** | **Translation & Agricultural Glossary** | `backend/services/translation.py`, `backend/database/db.py` (`glossary_terms`), `backend/api/routes.py` (`/admin/glossary`) | Implemented & Tested | `test_glossary_lookup_and_preservation`, `test_translation_passthrough_and_glossary` | 25+ pre-seeded verified Marathi/Hindi/English agricultural terms (`Wheat/गहू/गेहूं`, `Bollworm/बोंड अळी/सुंडी`, `PMFBY`, etc.) + Admin glossary CRUD API. |
+| **5** | **Knowledge Ingestion & Management** | `backend/services/document_processor.py`, `scripts/ingest_documents.py`, `backend/database/db.py`, `backend/api/routes.py` | Implemented & Tested | `test_document_processor.py`, `test_document_approval_workflow`, `test_duplicate_pdf_hash_detection` | PyMuPDF extraction, SHA-256 duplicate detection, provenance metadata (publisher, source URL, publication date, crop, region, version, approval status), approval/rejection/deletion & index rebuild. |
+| **6** | **Embeddings & Vector Store** | `backend/services/embeddings.py`, `backend/services/vector_store.py` | Implemented & Tested | `test_embeddings_shape_and_multilingual`, `test_vector_store_metadata_filtering`, `test_vector_store_rebuild` | `paraphrase-multilingual-MiniLM-L12-v2` (384-dim) + FAISS `IndexFlatIP` with persistent disk store, metadata filtering (`crop`, `region`, `approved` status), and live index rebuilding. |
+| **7** | **Retrieval Engine** | `backend/services/retriever.py` | Implemented & Tested | `test_retriever.py` (semantic, BM25, RRF hybrid, crop/region boost, approved filter) | Semantic + Okapi BM25 hybrid retrieval merged via **Reciprocal Rank Fusion (RRF)** + crop/region metadata boosting + strict approved-document filtering. |
+| **8** | **Live Data Tools (Mandi & Weather)** | `backend/services/mandi_service.py`, `backend/services/weather_service.py` | Implemented & Live-Tested | `test_live_weather_open_meteo`, `test_mandi_credentials_gate`, `test_mandi_cache_and_status` | Weather live-verified via **Open-Meteo** (no key required) + OpenWeatherMap support, 3-day forecast, TTL caching, & localized advisories. Mandi integrates Agmarknet (`data.gov.in`) with clear `credentials_required` distinction when `AGMARKNET_API_KEY` is absent. |
+| **9** | **Answer Generation** | `backend/services/llm_service.py` | Implemented & Tested | `test_llm_intent_templates`, `test_extractive_grounded_fallback` | Intent-specific prompt templates (`crop_advice`, `pest_disease`, `government_schemes`, `mandi_prices`, `weather`) for Ollama (`qwen2.5:7b`) / OpenAI + transparent `extractive_grounded` evidence synthesis when offline LLM is unreachable. |
+| **10** | **Confidence Gate & Fallback** | `backend/services/safety_service.py` | Implemented & Tested | `test_safety_service.py` (8 tests covering `ANSWER`, `CLARIFY`, `REFUSE`, `REFER`) | Dedicated 4-way decision engine (`ANSWER`, `CLARIFY`, `REFUSE`, `REFER`) checking STT confidence, retrieval relevance, approved source coverage, missing crop/location, banned chemicals, and dosage safety. |
+| **11** | **Text-to-Speech & Delivery** | `backend/services/text_to_speech.py` | Implemented & Tested | `test_tts_synthesis_hindi`, `test_tts_synthesis_marathi` | Real MP3 generation via gTTS for Marathi & Hindi + Bhashini ULCA pipeline integration + graceful text fallback on failure. |
+| **12** | **Safety, Privacy & Compliance** | `backend/services/safety_service.py`, `backend/api/routes.py`, `backend/database/db.py` | Implemented & Tested | `test_admin_auth_protection`, `test_audio_retention_purge`, `test_consent_session_persistence` | Role-gated admin endpoints (`X-Admin-Key`), secret isolation in `.env`, user consent tracking, 24h audio retention purge, upload extension & size validation, KVK/KCC disclaimers. |
+| **13** | **Evaluation, Monitoring & Feedback** | `scripts/benchmark.py`, `tests/evaluation_dataset.json`, `backend/api/routes.py` (`/feedback`, `/admin/metrics`) | Implemented & Tested | `test_feedback_submission`, `test_admin_metrics_endpoint`, `scripts/benchmark.py` | Automated benchmark measuring Recall@5, Refusal Rate, Language & Intent Accuracy, and Latency + UI 👍/👎 feedback persisted in SQLite. |
+| **14** | **Admin Console & Expert Review Loop** | `frontend-web/src/components/AdminConsole.tsx`, `backend/api/routes.py` (`/admin/*`) | Implemented & Tested | `test_admin_document_lifecycle`, `test_review_queue_resolution`, `test_glossary_crud` | Full web console for PDF upload/approval/rejection/deletion, failed/low-confidence query review queue, glossary management, feedback & metrics dashboard. |
+
+---
+
+## 2. Section 6 Technical Checklist Coverage
+
+| Technical Area | Requirement | Implementation & Verification |
+|---|---|---|
+| **1. Audio & Voice Pipeline** | Multi-format normalization, Whisper ASR, confidence check, regional TTS | `speech_to_text.py` (with `imageio-ffmpeg`), `text_to_speech.py`, browser `MediaRecorder` UI |
+| **2. Multilingual NLP** | Marathi & Hindi support, code-mixed handling, glossary | `language_detection.py`, `intent_classifier.py`, `translation.py`, SQLite glossary |
+| **3. Trusted RAG** | PDF extraction, chunking, metadata, FAISS + BM25 + RRF, approved-only filter | `document_processor.py`, `vector_store.py`, `retriever.py` |
+| **4. Live Integrations** | Separate weather & mandi tools, timestamps, no stale data as live | `weather_service.py` (Open-Meteo live), `mandi_service.py` (Agmarknet interface) |
+| **5. Safety & Refusal** | `ANSWER`/`CLARIFY`/`REFUSE`/`REFER`, pesticide dosage guardrails, KVK referral | `safety_service.py` verified across all safety scenarios |
+| **6. Channel & UI** | WhatsApp webhook + polished React/Tailwind web product | `whatsapp.py` + `frontend-web/` (React + Vite + TypeScript + Tailwind) |
+| **7. Ops, Docs & QA** | Automated pytest suite, benchmark report, Docker, complete `/docs` | `tests/`, `scripts/benchmark.py`, `Dockerfile`, `docker-compose.yml`, `docs/*` |
